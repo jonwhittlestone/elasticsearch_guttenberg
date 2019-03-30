@@ -1,0 +1,39 @@
+version: "3"
+
+services:
+  api: # node app
+    container_name: gs-api
+    build: .
+    ports:
+      - "4000:3000" # Expose API port
+      - "9229:9229" # Expose node process debug port
+    environment:
+      - NODE_ENV=local
+      - ES_HOST=elasticsearch
+      - PORT=3000
+    volumes: # Attach local book data directory
+      - ./books:/usr/src/app/books
+
+  frontend: # Nginx Server for Frontend app
+    container_name: gs-frontend
+    image: nginx
+    volumes: # Serve local 'public' dir
+      - ./public:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+
+  elasticsearch: # Elasticsearch Instance
+    container_name: gs-search
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.1.1
+    volumes: # Persist ES data in separate "esdata" volume
+      - esdata:/usr/share/elasticsearch/data
+    environment:
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
+    ports: # Expose Elastic search ports
+      - "9300:9300"
+      - "9200:9200"
+
+volumes: # Define separate volume for Elasticsearch data
+  esdata:
