@@ -16,8 +16,8 @@ async function readAndInsertBooks() {
 
     for (let file of files) {
       const filePath = path.join(`./books`, file);
-      const { title, author, pararaphs } = parseBookFile(filePath);
-      //   await insertBookData(title, author, paragraphs);
+      const { title, author, paragraphs } = parseBookFile(filePath);
+      await insertBookData(title, author, paragraphs);
     }
   } catch (err) {
     console.log(err);
@@ -66,6 +66,40 @@ function parseBookFile(filePath) {
   console.log(`Parsed ${paragraphs.length} Paragraphs\n`);
 
   return { title, author, paragraphs };
+}
+
+async function insertBookData(title, author, paragraphs) {
+  // Array to store bulk operations
+  let bulkOps = [];
+
+  // Add an index operation for each section in the book
+  for (let i = 0; i < paragraphs.length; i++) {
+    // Describe action
+    bulkOps.push({
+      index: {
+        _index: esConnection.index,
+        _type: esConnection.type
+      }
+    });
+
+    // Add document
+    bulkOps.push({ author, title, location: i, text: paragraphs[i] });
+
+    // Do bulk insert in 500 paragraph batches
+    if (i > 0 && i % 500 === 0) {
+      await esConnection.client.bulk({ body: bulkOps });
+      bulkOps = [];
+      console.log(`Indexed Paragraphs ${i - 499} - ${i}`);
+    }
+  } // end for
+
+  // Inset remainder of bulk ops array
+  await esConnection.client.bulk({ body: bulkOps });
+  console.log(
+    `Indexed Paragraphs ${paragraphs.length - bulkOps.length / 2} - ${
+      paragraphs.length
+    }\n\n\n`
+  );
 }
 
 readAndInsertBooks();
