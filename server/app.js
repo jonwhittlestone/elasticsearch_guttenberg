@@ -1,13 +1,69 @@
 const Koa = require("koa");
-const app = new Koa();
+const Router = require("koa-router");
 
+// input validation
+const joi = require("joi");
+const validate = require("koa-joi-validate");
+const search = require("./search");
+
+const app = new Koa();
+const router = new Router();
+
+// Log each request to the console
 app.use(async (ctx, next) => {
-  ctx.body = "Hello World from the Backend container";
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  console.log(`${ctx.method} ${ctx.url} - ${ms}`);
+
+  // ctx.body = "Hello World from the Backend container";
 });
+
+// Log percolated errors to the console
+app.on("error", err => {
+  console.error("Server Error", err);
+});
+
+// Set permissive CORS header
+app.use(async (ctx, next) => {
+  ctx.set("Access-Control-Allow-Origin", "*");
+  return next();
+});
+
+// ADD ENDPOINTS HERE
+/**
+ * GET /search
+ * Search for a term in the library
+ *
+ */
+
+router.get(
+  "/search",
+  validate({
+    query: {
+      term: joi
+        .string()
+        .max(60)
+        .required(),
+      offset: joi
+        .number()
+        .integer()
+        .min(0)
+        .default(0)
+    }
+  }),
+  async (ctx, next) => {
+    const { term, offset } = ctx.request.query;
+    ctx.body = await search.queryTerm(term, offset);
+  }
+);
 
 const port = process.env.PORT || 3000;
 
-app.listen(port, err => {
-  if (err) consoler.log(err);
-  console.log(`App Listening on Port ${port}`);
-});
+app
+  .use(router.routes())
+  .use(router.allowedMethods())
+  .listen(port, err => {
+    if (err) throw err;
+    console.log(`App Listening on Port ${port}`);
+  });
