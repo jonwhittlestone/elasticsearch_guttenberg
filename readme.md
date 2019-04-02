@@ -17,3 +17,7 @@ cache-control: no-cache
 Postman-Token: 95013f61-e77d-4d43-9058-f834964c62cf
 
 ```
+
+## Browser frontend app
+
+Once docker containers built, and up, go to `http://localhost:8080`
